@@ -119,7 +119,8 @@
   (let ((output ( find-empty-t-register)))
     (with-output-to-string (s *output*)
       (format s "ADD ~{~a~^,  ~} ~%" (cons output params) ))
-    (free-temp-register params)))
+    (free-temp-register params)
+    output))
 
 (defun list-of-values (operands env)
   (if (not operands)
