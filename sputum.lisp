@@ -1,4 +1,3 @@
-;(format t "~{~a~}" *code*)
 ;;Setting up stuff with all the registers and shit
 (defparameter *number-registers* 12)
 
@@ -93,7 +92,35 @@
 	  (setf (gethash (car var-val) frame) (cdr var-val) )
 	  (setf (gethash var-val frame) 0)))))
 
-(defparameter *primitive-procedures* '(+ -))
+
+(defparameter *procedures* (make-hash-table))
+
+(defmacro defprocedure (func &body body)
+`(setf (gethash ,func *procedures*) (lambda (params)
+				  (let ((output ( find-empty-t-register)))
+				    (with-output-to-string (s *output*)
+				      ,@body)
+				    (free-temp-register params)
+				    output)))
+  )
+
+(defprocedure '+
+  (format s "add ~{~a~^,  ~} ~%" (cons output params) ))
+
+(defprocedure '-
+  (format s "sub ~{~a~^,  ~} ~%" (cons output params) ))
+
+(defprocedure '*
+  (format s "mul ~{~a~^,  ~} ~%" (cons output params) ))
+
+(defprocedure '/
+  (format s "div ~{~a~^,  ~} ~%"  params )
+     (format s "mflo ~a~%" output))
+
+(defprocedure '%
+  (format s "div ~{~a~^,  ~} ~%"  params )
+  (format s "mfhi ~a~%") output)
+
 
 (defun operator (expr)
   (first expr))
@@ -111,16 +138,13 @@
   (cond ((numberp expr) (temp-register-allot expr) )
 	((register-p expr) expr)
 	((listp expr)
-	 (apply! (operands expr) (list-of-values (operands expr) env)))))
+	 (apply! (operator expr) (list-of-values (operands expr) env)))))
 
 
 (defun apply! (funct params)
   "Takes a fuction and its parameters and converts to asm"
-  (let ((output ( find-empty-t-register)))
-    (with-output-to-string (s *output*)
-      (format s "ADD ~{~a~^,  ~} ~%" (cons output params) ))
-    (free-temp-register params)
-    output))
+  (funcall (gethash funct *procedures*) params)
+ )
 
 (defun list-of-values (operands env)
   (if (not operands)
@@ -128,9 +152,6 @@
       (cons
        (evaluate (first operands) env)
        (list-of-values (rest operands) env))))
-
-
-
 
 ;(format t "Given arguments are ~&~S~&" *args*)
 (defparameter *output* (make-array 0 
@@ -156,4 +177,3 @@
   (format stream "~a" *output*)
   (format t "~a" *output*)
   (close stream))
-
