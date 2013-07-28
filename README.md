@@ -1,4 +1,4 @@
-# Sputum
+# Phlegm
 
 A Lispy SPIM Spitter
 
