@@ -1,0 +1,4 @@
+(let (sum)
+  (print-string "Hello")
+  (set sum (read-integer)))
+
