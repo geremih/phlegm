@@ -27,37 +27,10 @@
 	      *register-list* ))
       (push  (make-register :name (symbol-name (car part)))
 	     *register-list*)))
+
 (setf *register-list* (reverse *register-list*))
-;;(format t "~%All registers loaded~%")
 
-(defun get-trap-code (function)
-  "Returns the trap code for syscalls"
-  (let ((trap-code 0)
-	(syscall (list 'print_int 
-		       'print_float
-		       'print_double 
-		       'print_string 
-		       'read_int 
-		       'read_float 
-		       'read_double 
-		       'read_string 
-		       'sbrk 
-		       'exit 
-		       'print_char 
-		       'read_char
-		       'file_open
-		       'file_read 
-		       'file_write 
-		       'file_close )))
-    (dolist (sys syscall trap-code)
-      (incf trap-code)
-      (when (equal function sys)
-	(return trap-code))
-      )))
-
-;;Environment has frames with variables in it
-;; Let allows lexical scoping which will be helpful in environements
-;;Can be rewritten using find
+;;TODO Can be rewritten using find
 
 (defun find-empty-t-register ()
   "find an empty register of type t"
@@ -77,7 +50,6 @@
     a))
 
 
-
 (defun var-register-allot (constant)
   "Allot a t register to a variable"
   (let ((a  (find-empty-t-register)))
@@ -88,8 +60,7 @@
 	  (register-free? a) nil)
     a))
 
-
-;;Convert into a macro for freeing register
+;; TODO: Convert into a macro for freeing register
 
 (defun free-temp-register (params)
   "Takes a list of registers and frees those which are temporary"
@@ -103,9 +74,9 @@
   (dolist (param params)
     (setf (register-free? param) t)))
 
+;;Environment has frames with variables in it
+
 (defparameter *env* '())
-
-
 
 (defun make-frame (var-val-list)
   "var-val list is ((var value) (var value)). Value defaults to 0"
@@ -128,11 +99,6 @@
     (free-register-list register-list)))
 
 (defparameter *procedures* (make-hash-table))
-
-
-
-
-
 
 (defmacro defprocedure (func &body body)
   "make primitive procedures"
@@ -164,6 +130,42 @@
 (defprocedure 'set
     (format s "move ~{~a~^, ~} ~%" params))
 
+(setf (gethash 'print-string *procedures*) (lambda (params)
+				    (with-output-to-string (s *text*)
+				      (format s "la $a0 , ~a~%" (first params) )
+				      (format s "li $v0 , 4~%")
+				      (format s "syscall~%")
+				      )
+				    ))
+
+
+
+(defun get-trap-code (function)
+  "Returns the trap code for syscalls"
+  (let ((trap-code 0)
+	(syscall (list 'print_int 
+		       'print_float
+		       'print_double 
+		       'print_string 
+		       'read_int 
+		       'read_float 
+		       'read_double 
+		       'read_string 
+		       'sbrk 
+		       'exit 
+		       'print_char 
+		       'read_char
+		       'file_open
+		       'file_read 
+		       'file_write 
+		       'file_close )))
+    (dolist (sys syscall trap-code)
+      (incf trap-code)
+      (when (equal function sys)
+	(return trap-code))
+      )))
+
+
 
 (defun operator (expr)
   "returns operator of expression"
@@ -191,13 +193,27 @@
   (equal (car expr) 'let))
 
 
+;;Returning string-name as a string. Be careful.
+(let ((no-string 1))
+  (defun get-string-name (expr)
+    (let (( string-name (concatenate 'string "string" (write-to-string no-string))))
+      (incf no-string)
+      (with-output-to-string (s *data*)
+	(format s "~a: ~%" string-name )
+	(format s ".asciiz \"~a\"" expr)
+	string-name
+	))))
+
 
 
 ;Write a better eval that takes into acco
 (defun evaluate (expr)
   (format t "Evaluating: ~a~%" expr)
   (format t "The current environmnet is ~a ~%" *env*)
-  (cond ((numberp expr) (temp-register-allot expr) )
+  (cond ((multi-expr expr) (dolist (exp expr)
+			     (evaluate exp)))
+	((numberp expr) (temp-register-allot expr))
+	((stringp expr) (get-string-name expr))
 	((register-p expr)  expr )
 	((variablep expr) (format t "Found variable ~a~%" expr)(get-register-for-var expr))
 	((letp expr)
@@ -215,41 +231,41 @@
   )
 
 (defun list-of-values (operands)
+  "Evaluates the operands recursively"
   (if (not operands)
       '()
       (cons
        (evaluate (first operands))
        (list-of-values (rest operands)))))
 
-					;(format t "Given arguments are ~&~S~&" *args*)
+
+;;Contains the .text of SPIM
 (defparameter *text* (make-array 0 
 				   :element-type 'character 
 				   :adjustable t 
 				   :fill-pointer 0))
+
+;;Contains the .data of SPIM
 (defparameter *data* (make-array 0 
 				   :element-type 'character 
 				   :adjustable t 
 				   :fill-pointer 0))
 
 
+
 ;;Parser
-;;parses into a list, PERFECT!
+;;parses into a lists
 (defun get-file (filename)
   (with-open-file (stream filename)
     (read stream)))
 
-
-
-;;Parser
-;;parses into a list, PERFECT!
-(defun get-file (filename)
-  (with-open-file (stream filename)
-    (read stream)))
-
-
+;;Checks if both arguments are present
 (unless (= 2 (length *args*))
   (error "Incorrect arguments given. Should be of form: %prog input-file output-file"))
+
 (defparameter *code* (get-file (first *args*)))
+
+;;Drools the mucus
 (format t "~a" *code*)
 
 
@@ -259,7 +275,10 @@
 				    (format nil ".text~%.globl main~%main:~%")
 				    (format nil "~a" *text*)))
 
+;;Here is where it all starts
 (evaluate *code*)
+
+;;Print out the compiled code to standard output and file
 (let ((stream (open (second *args*) :direction :output)))
   (format stream ".data~%")
   (format stream "~a" *data*)
@@ -269,8 +288,7 @@
   (format t "~(~a~)" *data*)
   (format t ".text~%.globl main~%main:~%")
   (format t "~(~a~)" *text*)
-  
-  (close stream))
+    (close stream))
 
 
 
