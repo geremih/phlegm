@@ -1,8 +1,9 @@
 # Phlegm
 
-A Lispy SPIM Spitter
+Coughs SPIM
 
+```bash
+$ clisp phlegm.lisp test.phlm output.asm
+```
 
-# Supported Functions
-Lexical scoping 
-Binary addition, subtraction, multiplication, mod , quotient
+Will update the rest in a bit.
