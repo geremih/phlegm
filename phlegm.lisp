@@ -140,8 +140,25 @@
   (format s "syscall~%")
   (format s "move ~a , $v0~%" output))
 
-(defprocedure '>
+(defprocedure '>=
     (format s "bge ~{~a~^,~}~%" params))
+
+(defprocedure '>
+    (format s "bgt ~{~a~^,~}~%" params))
+
+(defprocedure '<=
+    (format s "ble ~{~a~^,~}~%" params))
+
+(defprocedure '<
+    (format s "blt ~{~a~^,~}~%" params))
+
+(defprocedure '=
+    (format s "beq ~{~a~^,~}~%" params))
+(defprocedure '!=
+    (format s "bneq ~{~a~^,~}~%" params))
+
+
+
 
 (setf (gethash 'print-string *procedures*) (lambda (params)
 					     (with-output-to-string (s *text*)
@@ -225,6 +242,18 @@
 	(format s ".asciiz \"~a\"~%" expr)
 	string-name
 	))))
+
+;;;TESTING
+
+
+(defmacro get-*-name (sym)
+  (let* ((helper-name (intern (format nil "get-~a-name" sym))))
+    `(let ((count 1))
+       (defun ,helper-name ()
+	 (let (( string-name (concatenate 'string ,(symbol-name sym) (write-to-string count))))
+	   (incf count)
+	   string-name)))))
+;;;TESTING
 
 (let ((count 1))
   (defun get-if-name ()
