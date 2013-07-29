@@ -240,6 +240,26 @@
 
 
 (let ((count 1))
+  (defun get-while-name ()
+    (let (( string-name (concatenate 'string "while" (write-to-string count))))
+      (incf count)
+      string-name)))
+
+(let ((count 1))
+  (defun get-while-exit-name ()
+    (let (( string-name (concatenate 'string "while_exit" (write-to-string count))))
+      (incf count)
+      string-name)))
+
+
+
+(let ((count 1))
+  (defun get-while-loop-name ()
+    (let (( string-name (concatenate 'string "while_loop" (write-to-string count))))
+      (incf count)
+      string-name)))
+
+(let ((count 1))
   (defun get-cont-name ()
     (let (( string-name (concatenate 'string "cont" (write-to-string count))))
       (incf count)
@@ -262,12 +282,17 @@
       (format stream "~a:~%" c))))
 
 (defun handle-while (expr)
-  (let ((while-exit (get-while-exit-name))))
-  (write-to-output stream *text*
-    (format stream "b ~a~%" (get-while-name) )
-      (format stream "~a:~%" c)))
-
-
+  (let ((while- (make-label :name (get-while-name)))
+	(while-loop (make-label :name (get-while-loop-name)))
+	(while-exit (make-label :name (get-while-exit-name))))
+    (write-to-output stream *text*
+      (format stream "~a:~%" while-)
+      (evaluate  (append (second expr) (list  while-loop)))
+      (format stream "b ~a~%" while-exit)
+      (format stream "~a:~%" while-loop)
+      (evaluate (cddr expr))
+      (format stream "b ~a~%" while- )
+      (format stream "~a:~%" while-exit))))
 
 (defstruct (label ( :print-function (lambda (struct stream depth)
 					 (declare (ignore depth))
