@@ -17,7 +17,6 @@ $ clisp phlegm.lisp test.phlm output.asm
 ```
 
 ###Output
-Output
 
 ```asm
 .data
