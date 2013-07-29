@@ -107,8 +107,7 @@
 					  (with-output-to-string (s *text*)
 					    ,@body)
 					  (free-temp-register params)
-					  output)))
-  )
+					  output))))
 
 (defprocedure '+
     (format s "add ~{~a~^,  ~} ~%" (cons output params) ))
@@ -133,17 +132,13 @@
 (defprocedure 'read-integer
     (format s "li $v0 , 5 ~%")
   (format s "syscall~%")
-  (format s "move ~a , $v0~%" output)
-  )
+  (format s "move ~a , $v0~%" output))
 
 (setf (gethash 'print-string *procedures*) (lambda (params)
 					     (with-output-to-string (s *text*)
 					       (format s "la $a0 , ~a~%" (first params) )
 					       (format s "li $v0 , 4~%")
-					       (format s "syscall~%")
-					       )
-					     ))
-
+					       (format s "syscall~%"))))
 
 
 (defun get-trap-code (function)
@@ -168,10 +163,7 @@
     (dolist (sys syscall trap-code)
       (incf trap-code)
       (when (equal function sys)
-	(return trap-code))
-      )))
-
-
+	(return trap-code)))))
 
 (defun operator (expr)
   "returns operator of expression"
@@ -185,9 +177,7 @@
   "Find if the variable exists in the environment "
   (dolist (frame *env*)
     (when (assoc expr frame)
-      (return t))
-    )
-  )
+      (return t))))
 
 (defun get-register-for-var (var)
   (dolist (frame *env*)
@@ -202,7 +192,6 @@
   (if (listp exprs)
       (every #'listp exprs)
       nil))
-
 
 
 ;;Returning string-name as a string. Be careful.
@@ -236,7 +225,6 @@
 	 (pop-frame)) 
 	((listp expr)
 	 (apply! (operator expr) (list-of-values (operands expr))))))
-
 
 (defun apply! (funct params)
   "Takes a fuction and its parameters and converts to asm"
@@ -276,9 +264,7 @@
 		 (read stream nil 'eof)))
 	  ((eql line 'eof))
 	(push line sexps)))
-    (reverse sexps)
-    )
-  )
+    (reverse sexps)))
 
 ;;Checks if both arguments are present
 (unless (= 2 (length *args*))
@@ -302,9 +288,9 @@
 ;;Print out the compiled code to standard output and file
 (let ((stream (open (second *args*) :direction :output)))
   (format stream ".data~%")
-  (format stream "~a" *data*)
+  (format stream "~(~a~)" *data*)
   (format stream ".text~%.globl main~%main:~%")
-  (format stream "~a" *text*)
+  (format stream "~(~a~)" *text*)
   (format t ".data~%")
   (format t "~(~a~)" *data*)
   (format t ".text~%.globl main~%main:~%")
