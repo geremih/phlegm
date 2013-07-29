@@ -65,7 +65,9 @@
 (defun free-temp-register (params)
   "Takes a list of registers and frees those which are temporary"
   (dolist (param params)
-    (when (and param (register-temp? param))
+    (when (and param
+	       (register-p param)
+	       (register-temp? param))
       (setf (register-free? param) t))))
 
 
@@ -122,6 +124,10 @@
     (format s "div ~{~a~^,  ~} ~%"  params )
   (format s "mflo ~a~%" output))
 
+(defprocedure 'exit
+    (format s "li $v0 ,10~%")
+  (format s "syscall~%"))
+
 (defprocedure '%
     (format s "div ~{~a~^,  ~} ~%"  params )
   (format s "mfhi ~a~%") output)
@@ -133,6 +139,9 @@
     (format s "li $v0 , 5 ~%")
   (format s "syscall~%")
   (format s "move ~a , $v0~%" output))
+
+(defprocedure '>
+    (format s "bge ~{~a~^,~}~%" params))
 
 (setf (gethash 'print-string *procedures*) (lambda (params)
 					     (with-output-to-string (s *text*)
@@ -183,15 +192,27 @@
   (dolist (frame *env*)
     (when (assoc var frame)
       (return (cdr (assoc var frame))))
-    )
-  )
+    ))
+
+
 (defun letp (expr)
   (equal (car expr) 'let))
+
+
+(defun ifp (expr)
+  (equal (car expr) 'if))
 
 (defun multi-exprp (exprs)
   (if (listp exprs)
       (every #'listp exprs)
       nil))
+(defun whilep (expr)
+  (equal (car expr) 'while))
+
+(defmacro write-to-output (stream output &body body)
+  "Stream is this arbitary name for stream used in format , output is *data* or *text*"
+  `(with-output-to-string (,stream ,output)
+	,@body))
 
 
 ;;Returning string-name as a string. Be careful.
@@ -205,6 +226,53 @@
 	string-name
 	))))
 
+(let ((count 1))
+  (defun get-if-name ()
+    (let (( string-name (concatenate 'string "if" (write-to-string count))))
+      (incf count)
+      string-name)))
+
+(let ((count 1))
+  (defun get-else-name ()
+    (let (( string-name (concatenate 'string "else" (write-to-string count))))
+      (incf count)
+      string-name)))
+
+
+(let ((count 1))
+  (defun get-cont-name ()
+    (let (( string-name (concatenate 'string "cont" (write-to-string count))))
+      (incf count)
+      string-name)))
+ 
+
+(defun handle-if (expr)
+  (let ((c (make-label :name (get-cont-name)))
+	(if-name (make-label :name (get-if-name))))
+    
+    (evaluate (append (second expr) (list if-name)))
+    (write-to-output stream *text*
+      (format stream "~a:~%" if-name))
+    (evaluate (third expr))
+    (write-to-output stream *text*
+      (format stream "b ~a~%~a:~%" c  (get-else-name)))
+    (evaluate (fourth expr))
+    (write-to-output stream *text*
+      (format stream "b ~a~%" c )
+      (format stream "~a:~%" c))))
+
+(defun handle-while (expr)
+  (let ((while-exit (get-while-exit-name))))
+  (write-to-output stream *text*
+    (format stream "b ~a~%" (get-while-name) )
+      (format stream "~a:~%" c)))
+
+
+
+(defstruct (label ( :print-function (lambda (struct stream depth)
+					 (declare (ignore depth))
+					 (format stream "~a" (label-name struct)))))
+  name)
 
 
 					;Write a better eval that takes into acco
@@ -213,11 +281,16 @@
   (format t "The current environmnet is ~a ~%" *env*)
   (cond ((multi-exprp expr) (format t "Multi expression found: ~a~%" expr)
 	 (dolist (exp expr)
-			      (evaluate exp)))
+	   (evaluate exp)))
+	((label-p expr) (format t "A label!") expr)
+	((variablep expr) (format t "Found variable ~a~%" expr)(get-register-for-var expr))
+	
 	((numberp expr) (temp-register-allot expr))
 	((stringp expr) (get-string-name expr))
 	((register-p expr)  expr )
-	((variablep expr) (format t "Found variable ~a~%" expr)(get-register-for-var expr))
+	((ifp expr) (handle-if expr))
+	((whilep expr) (handle-while expr))
+	
 	((letp expr)
 	 (format t "Found a let~%")
 	 (add-frame (cadr expr))
