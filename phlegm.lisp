@@ -270,8 +270,15 @@
 ;;Parser
 ;;parses into a lists
 (defun get-file (filename)
-  (with-open-file (stream filename)
-      (read stream)))
+  (let (( sexps '()))
+    (with-open-file (stream filename)
+      (do ((line (read stream nil 'eof)
+		 (read stream nil 'eof)))
+	  ((eql line 'eof))
+	(push line sexps)))
+    (reverse sexps)
+    )
+  )
 
 ;;Checks if both arguments are present
 (unless (= 2 (length *args*))
