@@ -140,6 +140,11 @@
   (format s "syscall~%")
   (format s "move ~a , $v0~%" output))
 
+(defprocedure 'print-integer
+    (format s "li $v0 , 1~%")
+  (format s "move $a0 , ~{~a~}~%" params)
+  (format s "syscall~%")
+    )
 (defprocedure '>=
     (format s "bge ~{~a~^,~}~%" params))
 
