@@ -1,5 +1,14 @@
-(let (sum)
-  (print-string "Hello")
-  (set sum (read-integer)))
 
-(+ 1 2)
+
+(print-string "Please enter integer" )
+(let (var (sum 0))
+  (set var (read-integer))
+  (let ((i 0))
+    (while (< i var)
+	 (if (= (% var i) 0)
+	     (set sum (+ i sum)))
+	 (set i (+ i 1)))
+    )
+  (print-string "The given integer is:")
+  (print-integer sum) 
+  )

@@ -50,7 +50,7 @@
 (defun temp-register-allot (&optional constant)
   "Temporarily allot a t register"
   (let ((a  (find-empty-t-register)))
-    (if (equal nil constant)
+    (unless (equal nil constant)
 	(with-output-to-string (stream *text*)
 	  (format stream "li ~a , ~a ~%" a constant)))
     (setf (register-value a) constant
@@ -77,6 +77,7 @@
     (when (and param
 	       (register-p param)
 	       (register-temp? param))
+      (format t "Freeing register ~a ~%" param)
       (setf (register-free? param) t))))
 
 
@@ -240,10 +241,12 @@
 (defun handle-while (expr)
   (let ((while- (make-label :name (get-while-name)))
 	(while-loop (make-label :name (get-while-loop-name)))
-	(while-exit (make-label :name (get-while-exit-name))))
+	(while-exit (make-label :name (get-while-exit-name)))
+	)
+    
     (write-to-output stream *text*
       (format stream "~a:~%" while-)
-      (evaluate  (append (second expr) (list  while-loop)))
+      (setf a (evaluate  (append (second expr) (list  while-loop))))
       (format stream "b ~a~%" while-exit)
       (format stream "~a:~%" while-loop)
       (evaluate (cddr expr))
