@@ -3,7 +3,7 @@
 (defmacro defprocedure (func &body body)
   "make primitive procedures"
   `(setf (gethash ,func *procedures*) (lambda (params)
-					(let ((output ( find-empty-t-register)))
+					(let ((output ( temp-register-allot)))
 					  (with-output-to-string (s *text*)
 					    ,@body)
 					  (free-temp-register params)

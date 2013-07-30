@@ -1,8 +1,9 @@
 (load "auxfns.lisp")
 (load "procedures.lisp")
 
+
 (dbug  :input :output)
-;;debug ids are :code :output :eval :env
+;;debug ids are :code :output  :env
 
 ;;contains name of the register, consed with a number if subscript goes from 0 - n-1
 (defparameter *mnemonics*
@@ -43,13 +44,15 @@
   (dolist (reg *register-list*)
     (when (and (equal (register-type reg) '$t)
 	       (register-free? reg))
+      
       (return reg))))
 
-(defun temp-register-allot (constant)
+(defun temp-register-allot (&optional constant)
   "Temporarily allot a t register"
   (let ((a  (find-empty-t-register)))
-    (with-output-to-string (stream *text*)
-      (format stream "li ~a , ~a ~%" a constant))
+    (if (equal nil constant)
+	(with-output-to-string (stream *text*)
+	  (format stream "li ~a , ~a ~%" a constant)))
     (setf (register-value a) constant
 	  (register-temp? a) t
 	  (register-free? a) nil)
@@ -86,6 +89,11 @@
 
 ;;Environment has frames with variables in it
 
+(trace find-empty-t-register )
+(trace free-register-list )
+(trace free-temp-register )
+(trace var-register-allot)
+(trace  temp-register-allot )
 (defparameter *env* '())
 
 (defun make-frame (var-val-list)
@@ -250,13 +258,13 @@
 
 					;Write a better eval that takes into acco
 (defun evaluate (expr)
-  (dbg :eval "Evaluating: ~a~%" expr)
+ 
   (dbg :env "The current environmnet is ~a ~%" *env*)
   (cond ((multi-exprp expr) 
 	 (dolist (exp expr)
 	   (evaluate exp)))
-	((label-p expr) )
-	((variablep expr))
+	((label-p expr) expr )
+	((variablep expr) (get-register-for-var expr))
 	
 	((numberp expr) (temp-register-allot expr))
 	((stringp expr) (get-string-name expr))
@@ -264,16 +272,17 @@
 	((ifp expr) (handle-if expr))
 	((whilep expr) (handle-while expr))
 	
-	((letp expr)
-	
+	((letp expr)	
 	 (add-frame (cadr expr))
 	 (evaluate (cddr expr) )
 	 (pop-frame)) 
 	((listp expr)
 	 (apply! (operator expr) (list-of-values (operands expr))))))
 
+(trace evaluate)
 (defun apply! (funct params)
   "Takes a fuction and its parameters and converts to asm"
+
   (funcall (gethash funct *procedures*) params)
   )
 
@@ -298,6 +307,7 @@
 				 :element-type 'character 
 				 :adjustable t 
 				 :fill-pointer 0))
+
 
 
 
