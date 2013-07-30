@@ -12,15 +12,14 @@ A program that tests whether a given integer is <a href="en.wikipedia.org/wiki/P
 
 ###Input
 ```lisp
-
 (print-string "Please enter integer" )
 (let (var (sum 0))
   (set var (read-integer))
   (let ((i 1))
     (while (< i var)
-   (if (= (% var i) 0)
-	     (set sum (+ i sum)))
-	 (set i (+ i 1))))
+      (if (= (% var i) 0)
+	  (set sum (+ i sum)))
+      (set i (+ i 1))))
   (if (= var sum)
       (print-string "Its a perfect string")
       (print-string "Not Perfect")))
