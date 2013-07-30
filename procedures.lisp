@@ -1,63 +1,66 @@
 (defparameter *procedures* (make-hash-table))
 
-(defmacro defprocedure (func &body body)
+(defmacro defprocedure (func  output &body body)
   "make primitive procedures"
+  (if output
+      (setf output '(temp-register-allot))
+      (setf output nil))
   `(setf (gethash ,func *procedures*) (lambda (params)
-					(let ((output ( temp-register-allot)))
+					(let ((output ,output))
 					  (with-output-to-string (s *text*)
 					    ,@body)
 					  (free-temp-register params)
 					  output))))
 
-(defprocedure '+
+(defprocedure '+ t
     (format s "add ~{~a~^,  ~} ~%" (cons output params) ))
 
-(defprocedure '-
+(defprocedure '- t
     (format s "sub ~{~a~^,  ~} ~%" (cons output params) ))
 
-(defprocedure '*
+(defprocedure '* t
     (format s "mul ~{~a~^,  ~} ~%" (cons output params) ))
 
-(defprocedure '/
+(defprocedure '/ t
     (format s "div ~{~a~^,  ~} ~%"  params )
   (format s "mflo ~a~%" output))
 
-(defprocedure 'exit
+(defprocedure 'exit nil
     (format s "li $v0 ,10~%")
   (format s "syscall~%"))
 
-(defprocedure '%
+(defprocedure '% t
     (format s "div ~{~a~^,  ~} ~%"  params )
   (format s "mfhi ~a~%" output))
 
-(defprocedure 'set
+(defprocedure 'set nil 
     (format s "move ~{~a~^, ~} ~%" params))
 
-(defprocedure 'read-integer
+(defprocedure 'read-integer t
     (format s "li $v0 , 5 ~%")
   (format s "syscall~%")
   (format s "move ~a , $v0~%" output))
 
-(defprocedure 'print-integer
+(defprocedure 'print-integer nil
     (format s "li $v0 , 1~%")
   (format s "move $a0 , ~{~a~}~%" params)
   (format s "syscall~%")
     )
-(defprocedure '>=
+(defprocedure '>= nil
     (format s "bge ~{~a~^,~}~%" params))
 
-(defprocedure '>
+(defprocedure '> nil
     (format s "bgt ~{~a~^,~}~%" params))
 
-(defprocedure '<=
+(defprocedure '<= nil
     (format s "ble ~{~a~^,~}~%" params))
 
-(defprocedure '<
+(defprocedure '< nil
     (format s "blt ~{~a~^,~}~%" params))
 
-(defprocedure '=
+(defprocedure '= nil
     (format s "beq ~{~a~^,~}~%" params))
-(defprocedure '!=
+(defprocedure '!= nil
     (format s "bneq ~{~a~^,~}~%" params))
 
 
