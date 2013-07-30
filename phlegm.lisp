@@ -1,8 +1,8 @@
 (load "auxfns.lisp")
-
+(load "procedures.lisp")
 
 (dbug  :input :output)
-;;debug ids are :code :output :register :eval :env
+;;debug ids are :code :output :eval :env
 
 ;;contains name of the register, consed with a number if subscript goes from 0 - n-1
 (defparameter *mnemonics*
@@ -77,14 +77,7 @@
       (setf (register-free? param) t))))
 
 
-(defun register-status ()
-  (let ((register-list '()))
-    (dolist (register *register-list*)
-      (setf register-list (append (list (register-name register) 'TEMP (register-temp? register) 'FREE? (register-free? register )) register-list))
-      )
-    register-list))
 
-(register-status)
 
 (defun free-register-list (params)
   "Takes a list of registers and frees those which are temporary"
@@ -114,102 +107,6 @@
     (dolist ( var (first *env*))
       (push (cdr var) register-list))
     (free-register-list register-list)))
-
-(defparameter *procedures* (make-hash-table))
-
-(defmacro defprocedure (func &body body)
-  "make primitive procedures"
-  `(setf (gethash ,func *procedures*) (lambda (params)
-					(let ((output ( find-empty-t-register)))
-					  (with-output-to-string (s *text*)
-					    ,@body)
-					  (free-temp-register params)
-					  output))))
-
-(defprocedure '+
-    (format s "add ~{~a~^,  ~} ~%" (cons output params) ))
-
-(defprocedure '-
-    (format s "sub ~{~a~^,  ~} ~%" (cons output params) ))
-
-(defprocedure '*
-    (format s "mul ~{~a~^,  ~} ~%" (cons output params) ))
-
-(defprocedure '/
-    (format s "div ~{~a~^,  ~} ~%"  params )
-  (format s "mflo ~a~%" output))
-
-(defprocedure 'exit
-    (format s "li $v0 ,10~%")
-  (format s "syscall~%"))
-
-(defprocedure '%
-    (format s "div ~{~a~^,  ~} ~%"  params )
-  (format s "mfhi ~a~%" output))
-
-(defprocedure 'set
-    (format s "move ~{~a~^, ~} ~%" params))
-
-(defprocedure 'read-integer
-    (format s "li $v0 , 5 ~%")
-  (format s "syscall~%")
-  (format s "move ~a , $v0~%" output))
-
-(defprocedure 'print-integer
-    (format s "li $v0 , 1~%")
-  (format s "move $a0 , ~{~a~}~%" params)
-  (format s "syscall~%")
-    )
-(defprocedure '>=
-    (format s "bge ~{~a~^,~}~%" params))
-
-(defprocedure '>
-    (format s "bgt ~{~a~^,~}~%" params))
-
-(defprocedure '<=
-    (format s "ble ~{~a~^,~}~%" params))
-
-(defprocedure '<
-    (format s "blt ~{~a~^,~}~%" params))
-
-(defprocedure '=
-    (format s "beq ~{~a~^,~}~%" params))
-(defprocedure '!=
-    (format s "bneq ~{~a~^,~}~%" params))
-
-
-
-
-(setf (gethash 'print-string *procedures*) (lambda (params)
-					     (with-output-to-string (s *text*)
-					       (format s "la $a0 , ~a~%" (first params) )
-					       (format s "li $v0 , 4~%")
-					       (format s "syscall~%"))))
-
-
-(defun get-trap-code (function)
-  "Returns the trap code for syscalls"
-  (let ((trap-code 0)
-	(syscall (list 'print_int 
-		       'print_float
-		       'print_double 
-		       'print_string 
-		       'read_int 
-		       'read_float 
-		       'read_double 
-		       'read_string 
-		       'sbrk 
-		       'exit 
-		       'print_char 
-		       'read_char
-		       'file_open
-		       'file_read 
-		       'file_write 
-		       'file_close )))
-    (dolist (sys syscall trap-code)
-      (incf trap-code)
-      (when (equal function sys)
-	(return trap-code)))))
 
 (defun operator (expr)
   "returns operator of expression"
@@ -353,7 +250,6 @@
 
 					;Write a better eval that takes into acco
 (defun evaluate (expr)
-  (dbg :register "Current list of registers is ~{~a ~^,~}~%" (register-status))
   (dbg :eval "Evaluating: ~a~%" expr)
   (dbg :env "The current environmnet is ~a ~%" *env*)
   (cond ((multi-exprp expr) 
