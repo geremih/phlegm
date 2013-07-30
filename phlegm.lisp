@@ -1,3 +1,9 @@
+(load "auxfns.lisp")
+
+
+(dbug  :input :output)
+;;debug ids are :code :output :register :eval :env
+
 ;;contains name of the register, consed with a number if subscript goes from 0 - n-1
 (defparameter *mnemonics*
   '((zero)
@@ -71,6 +77,15 @@
       (setf (register-free? param) t))))
 
 
+(defun register-status ()
+  (let ((register-list '()))
+    (dolist (register *register-list*)
+      (setf register-list (append (list (register-name register) 'TEMP (register-temp? register) 'FREE? (register-free? register )) register-list))
+      )
+    register-list))
+
+(register-status)
+
 (defun free-register-list (params)
   "Takes a list of registers and frees those which are temporary"
   (dolist (param params)
@@ -87,11 +102,11 @@
       (if (listp var-val)
 	  (setf frame (acons (first var-val) (var-register-allot (second var-val))  frame))
 	  (setf frame (acons  var-val (var-register-allot 0)  frame ))))
-    (format t "Frame to be added ~a ~%" frame)
+    (dbg :frame "Frame to be added ~a ~%" frame)
     frame))
 
 (defun add-frame (var-val-list)
-  (format t "Adding frame with vars ~a ~%" var-val-list)
+  (dbg :frame "Adding frame with vars ~a ~%" var-val-list)
   (push (make-frame var-val-list) *env*))
 
 (defun pop-frame ()
@@ -130,7 +145,7 @@
 
 (defprocedure '%
     (format s "div ~{~a~^,  ~} ~%"  params )
-  (format s "mfhi ~a~%") output)
+  (format s "mfhi ~a~%" output))
 
 (defprocedure 'set
     (format s "move ~{~a~^, ~} ~%" params))
@@ -302,14 +317,16 @@
 
 (defun handle-if (expr)
   (let ((c (make-label :name (get-cont-name)))
-	(if-name (make-label :name (get-if-name))))
+	(if-name (make-label :name (get-if-name)))
+	(else-name (make-label :name (get-else-name))))
     
     (evaluate (append (second expr) (list if-name)))
     (write-to-output stream *text*
+      (format stream "b ~a~%" else-name)
       (format stream "~a:~%" if-name))
     (evaluate (third expr))
     (write-to-output stream *text*
-      (format stream "b ~a~%~a:~%" c  (get-else-name)))
+      (format stream "b ~a~%~a:~%" c  else-name))
     (evaluate (fourth expr))
     (write-to-output stream *text*
       (format stream "b ~a~%" c )
@@ -336,13 +353,14 @@
 
 					;Write a better eval that takes into acco
 (defun evaluate (expr)
-  (format t "Evaluating: ~a~%" expr)
-  (format t "The current environmnet is ~a ~%" *env*)
-  (cond ((multi-exprp expr) (format t "Multi expression found: ~a~%" expr)
+  (dbg :register "Current list of registers is ~{~a ~^,~}~%" (register-status))
+  (dbg :eval "Evaluating: ~a~%" expr)
+  (dbg :env "The current environmnet is ~a ~%" *env*)
+  (cond ((multi-exprp expr) 
 	 (dolist (exp expr)
 	   (evaluate exp)))
-	((label-p expr) (format t "A label!") expr)
-	((variablep expr) (format t "Found variable ~a~%" expr)(get-register-for-var expr))
+	((label-p expr) )
+	((variablep expr))
 	
 	((numberp expr) (temp-register-allot expr))
 	((stringp expr) (get-string-name expr))
@@ -351,7 +369,7 @@
 	((whilep expr) (handle-while expr))
 	
 	((letp expr)
-	 (format t "Found a let~%")
+	
 	 (add-frame (cadr expr))
 	 (evaluate (cddr expr) )
 	 (pop-frame)) 
@@ -405,7 +423,7 @@
 (defparameter *code* (get-file (first *args*)))
 
 ;;Drools the mucus
-(format t "The code is ~% ~a~%" *code*)
+(dbg :input "INPUT: ~% ~a~%" *code*)
 
 
 (defparameter *output* (concatenate 'string
@@ -419,14 +437,16 @@
 
 ;;Print out the compiled code to standard output and file
 (let ((stream (open (second *args*) :direction :output)))
+ 
   (format stream ".data~%")
   (format stream "~(~a~)" *data*)
   (format stream ".text~%.globl main~%main:~%")
   (format stream "~(~a~)" *text*)
-  (format t ".data~%")
-  (format t "~(~a~)" *data*)
-  (format t ".text~%.globl main~%main:~%")
-  (format t "~(~a~)" *text*)
+  (dbg :output "~%~%OUTPUT: ~%")
+  (dbg :output ".data~%")
+  (dbg :output "~(~a~)" *data*)
+  (dbg :output ".text~%.globl main~%main:~%")
+  (dbg :output "~(~a~)" *text*)
   (close stream))
 
 
